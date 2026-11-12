@@ -172,7 +172,7 @@ footer img{width:34px;height:auto;opacity:.85}
   </section>
 
   <section id="cronograma">
-    <div class="cab"><h2>Cronograma de gravação</h2><p>Datas, horários e locais das próximas diárias.</p></div>
+    <div class="cab"><h2>Cronograma de gravação</h2><p>Próximas gravações combinadas.</p></div>
     <div id="agenda"></div>
   </section>
 
@@ -223,6 +223,9 @@ var AJUSTES = [
 /* status: "confirmado", "a confirmar" ou "gravado"
    exemplo: { data:"2026-11-20", hora:"09:00", titulo:"Diária na fábrica", local:"Betim/MG", status:"confirmado" } */
 var CRONOGRAMA = [
+  { titulo:"Imagens complementares para criativos", status:"a confirmar" },
+  { titulo:"Criativos de venda", status:"a confirmar" },
+  { titulo:"Visita à fábrica", previsao:"previsão: dezembro", status:"a agendar" }
 ];
 /* ============================================================ */
 
@@ -303,11 +306,11 @@ document.addEventListener("securitypolicyviolation", function(e){
   var ul = el("ul","agenda");
   var meses = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
   var dias = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
-  CRONOGRAMA.slice().sort(function(a,b){ return (a.data||"").localeCompare(b.data||""); }).forEach(function(c){
+  CRONOGRAMA.slice().sort(function(a,b){ return (a.data||"9999").localeCompare(b.data||"9999"); }).forEach(function(c){
     var li = el("li");
     var p = (c.data||"").split("-"), d = p.length===3 ? new Date(+p[0], +p[1]-1, +p[2]) : null;
     var dia = el("div","dia", d ? (("0"+d.getDate()).slice(-2) + " " + meses[d.getMonth()]) : "A definir");
-    dia.appendChild(el("small",null, (d ? dias[d.getDay()] : "") + (c.hora ? (d ? " · " : "") + c.hora : "")));
+    dia.appendChild(el("small",null, d ? (dias[d.getDay()] + (c.hora ? " · " + c.hora : "")) : (c.previsao || "data a combinar")));
     var oq = el("div","oque"); oq.appendChild(el("b",null,c.titulo||"Gravação")); if(c.local) oq.appendChild(el("span",null,c.local));
     var s = (c.status||"a confirmar").toLowerCase();
     var st = el("span","status " + (s==="gravado" ? "feito" : s==="confirmado" ? "" : "pend"), s);
