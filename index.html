@@ -80,6 +80,28 @@ h2{font-family:var(--display);font-weight:300;font-size:30px;letter-spacing:.06e
 @media (min-width:560px){.tira{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:940px){.tira{grid-template-columns:repeat(6,minmax(0,1fr))}}
 
+/* pedir alteracao */
+.pedir{border:1px solid var(--line);border-radius:4px;background:var(--veil);padding:22px;margin-bottom:30px}
+.pedir h3{font-family:var(--display);font-weight:300;font-size:21px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}
+.pedir .intro{margin:0 0 18px;color:var(--muted);font-size:14px}
+.pedir label{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.pedir .linha{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media (max-width:620px){.pedir .linha{grid-template-columns:1fr}}
+.pedir select,.pedir input,.pedir textarea{width:100%;background:#0b0c0b;color:var(--text);border:1px solid var(--line-strong);border-radius:3px;padding:11px 12px;font-family:var(--body);font-size:15px;line-height:1.4}
+.pedir textarea{resize:vertical;min-height:104px}
+.pedir select:focus,.pedir input:focus,.pedir textarea:focus{outline:none;border-color:var(--text)}
+.pedir .bloco{margin-bottom:16px}
+.pedir .acoes{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.pedir .aviso{font-size:13px;color:var(--muted);margin:0}
+.pedir .aviso.erro{color:#e8907c}
+.botao2{appearance:none;font-family:var(--body);font-size:13px;letter-spacing:.16em;text-transform:uppercase;padding:13px 24px;border-radius:999px;background:transparent;color:var(--text);border:1px solid var(--line-strong);cursor:pointer}
+.botao2:hover{background:var(--text);color:var(--ink)}
+.enviados{margin:0 0 30px;padding:0;list-style:none}
+.enviados li{display:flex;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.enviados li b{font-weight:500}
+.enviados li span{color:var(--muted);font-size:12.5px;margin-left:auto;white-space:nowrap}
+.enviados-tit{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+
 /* cronograma */
 .agenda{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
 .agenda li{display:grid;grid-template-columns:132px minmax(0,1fr) auto;gap:6px 24px;align-items:baseline;padding:18px 0;border-bottom:1px solid var(--line)}
@@ -168,6 +190,25 @@ footer img{width:34px;height:auto;opacity:.85}
 
   <section id="ajustes">
     <div class="cab"><h2>Ajustes</h2><p id="ajustes-resumo">O que foi pedido e quando ficou pronto.</p></div>
+    <form class="pedir" id="pedir" novalidate>
+      <h3>Pedir alteração</h3>
+      <p class="intro">Escolha o vídeo, descreva o que quer mudar e envie. O pedido chega direto no WhatsApp da produção.</p>
+      <div class="linha">
+        <div><label for="p-video">Vídeo</label><select id="p-video"></select></div>
+        <div><label for="p-nome">Seu nome</label><input id="p-nome" type="text" autocomplete="name"></div>
+      </div>
+      <div class="bloco">
+        <label for="p-texto">O que mudar</label>
+        <textarea id="p-texto" placeholder="Ex.: tirar a risada no final; deixar a legenda maior"></textarea>
+      </div>
+      <div class="acoes">
+        <button type="submit" class="botao">Enviar pelo WhatsApp</button>
+        <button type="button" class="botao2" id="p-copiar" hidden>Copiar mensagem</button>
+        <p class="aviso" id="p-aviso"></p>
+      </div>
+    </form>
+
+    <div id="p-enviados"></div>
     <div id="ajustes-lista"></div>
   </section>
 
@@ -202,6 +243,8 @@ footer img{width:34px;height:auto;opacity:.85}
    Cole o link de compartilhamento do Google Drive em "drive".
    O arquivo precisa estar como "Qualquer pessoa com o link".
    ============================================================ */
+var WHATSAPP = "5531992699002";   // numero da producao, so digitos com DDI e DDD. ex: 5531999998888
+
 var PASTA_DRIVE = "https://drive.google.com/drive/folders/1eJgppwgjoREnSCc1EBfIGXjl8_cogXdD?usp=sharing";   // link da pasta da cliente no Drive
 var MES = "Outubro de 2026";   // mês da entrega (pasta 10.2026 no Drive)
 
@@ -317,6 +360,71 @@ document.addEventListener("securitypolicyviolation", function(e){
     li.appendChild(dia); li.appendChild(oq); li.appendChild(st); ul.appendChild(li);
   });
   alvo.appendChild(ul);
+})();
+
+/* ---------- pedir alteracao ---------- */
+(function(){
+  var form=document.getElementById("pedir"), sel=document.getElementById("p-video"),
+      txt=document.getElementById("p-texto"), nom=document.getElementById("p-nome"),
+      aviso=document.getElementById("p-aviso"), btCopiar=document.getElementById("p-copiar"),
+      alvo=document.getElementById("p-enviados"), CHAVE="yuxi-pedidos", ultima="";
+
+  sel.appendChild(el("option",null,"Selecione"));
+  VIDEOS.forEach(function(v){ sel.appendChild(el("option",null,v.titulo)); });
+  sel.appendChild(el("option",null,"Outro / geral"));
+
+  function guardados(){
+    try{ return JSON.parse(localStorage.getItem(CHAVE)||"[]"); }catch(e){ return []; }
+  }
+  function mostrar(){
+    var l=guardados(); alvo.textContent="";
+    if(!l.length) return;
+    alvo.appendChild(el("p","enviados-tit","Enviados deste aparelho"));
+    var ul=el("ul","enviados");
+    l.slice().reverse().forEach(function(p){
+      var li=el("li");
+      li.appendChild(el("b",null,p.video));
+      li.appendChild(el("span",null,p.quando));
+      ul.appendChild(li);
+    });
+    alvo.appendChild(ul);
+  }
+  mostrar();
+
+  form.addEventListener("submit",function(e){
+    e.preventDefault();
+    aviso.className="aviso";
+    var v=sel.value, t=(txt.value||"").trim(), n=(nom.value||"").trim();
+    if(!v||v==="Selecione"){ aviso.className="aviso erro"; aviso.textContent="Escolha o vídeo."; sel.focus(); return; }
+    if(!t){ aviso.className="aviso erro"; aviso.textContent="Escreva o que quer mudar."; txt.focus(); return; }
+
+    ultima = "Pedido de alteração — Yuxi\n" + "Vídeo: " + v + (n ? "\nDe: " + n : "") + "\n\n" + t;
+
+    try{
+      var l=guardados();
+      l.push({ video:v, quando:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"short"}) });
+      localStorage.setItem(CHAVE, JSON.stringify(l.slice(-30)));
+    }catch(err){}
+
+    if(WHATSAPP){
+      var a=document.createElement("a");
+      a.href="https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(ultima);
+      a.target="_blank"; a.rel="noopener";
+      document.body.appendChild(a); a.click(); a.remove();
+      aviso.textContent="Abrimos o WhatsApp com seu pedido. Se não abrir, copie a mensagem ao lado.";
+    } else {
+      aviso.textContent="Copie a mensagem e envie para a produção.";
+    }
+    btCopiar.hidden=false;
+    txt.value=""; mostrar();
+  });
+
+  btCopiar.addEventListener("click",function(){
+    if(!ultima) return;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ultima).then(function(){ btCopiar.textContent="Copiado"; setTimeout(function(){ btCopiar.textContent="Copiar mensagem"; },2000); },function(){});
+    }
+  });
 })();
 
 /* ---------- ajustes ---------- */
